@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+
+<html>
+  <head>
+        <!--Encoding and viewport-->
+	    <meta charset="utf-8">
+	    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!--Import google font: Exo -->
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Exo">
+        <!--The page title-->
+        <title></title>
+        <!--CSS Styling-->
+        <style>
+            * {
+                transition: 1s;
+            }
+            body {
+                width: 100vw;
+                height: 100vh;
+                margin: 0;
+                padding: 0;
+                overflow: hidden;
+            }
+            a {
+                display: inline-block;
+                position: relative;
+                color: rgb(255, 255, 255);
+                text-decoration: none;
+            }
+            a::before {
+                content: "";
+                position: absolute;
+                width: 100%;
+                height: 2px;
+                bottom: 0;
+                left: 0;
+                background-color: rgb(255, 255, 255);
+                visibility: hidden;
+                transform: scaleX(0);
+                transition: all 0.3s ease-in-out 0s;
+            }
+            a:hover::before {
+                visibility: visible;
+                transform: scaleX(1);
+            }
+            h1, h2{
+                color: white;
+                font-family: 'Exo';
+                text-align: center;
+                font-size: 36px;
+            }
+            #container {
+                position: relative;
+            }
+            #container canvas, #overlay {
+                position: absolute;
+                color: white;
+            }
+            #overlay {
+                margin-top: 65%;
+                position: absolute;
+                width: 100vh;
+                margin-left: 20px;
+                font-family: 'Exo';
+                align-items: left; 
+                justify-content: left;
+            }
+            #overlay h1{
+                text-align: left;
+                text-decoration: underline;
+                text-decoration-color: rgb(100, 200, 100);
+            }
+            #overlay p{
+                text-align: left;
+            }
+            #game {
+                background-color: white;
+            }
+            #menu {
+                background-color: black;
+                overflow: hidden;
+                width: 100vw;
+                height: 100vh;
+                color: white;
+                font-family: 'Exo';
+                display: flex; 
+                flex-direction: row; 
+                align-items: center; 
+                justify-content: center;
+            }
+            #menu h1, h2{
+                color: white;
+                font-family: 'Exo';
+                text-align: center;
+                font-size: 58px;
+            }
+            #menu p {
+                margin-top: 112px;
+                position: absolute;
+                color: white;
+                font-family: 'Exo';
+                text-align: center;
+                font-size: 20px;
+            }
+            button {
+                color: white;
+                background-color: rgb(100, 200, 100);
+                box-shadow: none;
+                border: none;
+                position: absolute;
+                left: auto;
+                width: 342px;
+                height: 50px;
+                margin-top: 30%;
+                border-radius: 10px;
+                font-size: 41px;
+            }
+            button::before {
+                content: "";
+                position: absolute;
+                width: 100%;
+                height: 50px;
+                bottom: 0;
+                left: 0;
+                background-color: rgb(0, 0, 0, 0.5);
+                visibility: hidden;
+                transform: scaleX(0);
+                transition: all 0.1s ease-in-out 0s;
+                border-radius: 8.7px;
+            }
+            button:hover::before {
+                visibility: visible;
+                transform: scaleX(1);
+            }
+            
+            
+        </style>
+    </head>
+    <body>
+        <!--The game canvas-->
+        <div id= "container">
+            <canvas id = "game"></canvas>
+        </div>
+        
+        <!--The Game Script-->
+        <script type="module">
+/** setup code */
+const canvas = document.getElementById("game");
+//Get canvas context
+const ctx = canvas.getContext('2d');
+
+//Get window width and height
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+//Define the variables "width" and "height"
+const width = canvas.width;
+const height = canvas.height;
+
+/** These variables can be changed */
+//Next level?
+let nxt = true;
+//Current level
+let level = 0;
+//Key object
+let keys = {};
+//Stores all the blocks
+let blocks = [];
+
+/** These variables always remain the same */
+const blockSize = 24;
+//Edit levels here
+const MAP = [
+    [
+      
+      "     %",
+      "     #",
+      "     #",
+      "     #",
+      "#    #",
+      "#@   #",
+      "#$####",
+      "",
+    ],
+    [
+        "",
+        "#########",
+        "","",
+        "@ ###",
+        "#######",
+    ],
+    [
+        "",
+        "",
+        "",
+        "@",
+        "#####",
+    ],
+];
+
+/** Collisions and Collision response */ 
+function Collide(a, b) {
+    if ((a.x + a.w / 2 - 3) > b.x - a.w / 2 &&
+        (a.x) < (b.x + b.w - 3) &&
+        (a.y + a.h) > b.y &&
+        (a.y < b.y - 3)) {
+        a.v.y = 0;
+        a.jump = true;
+        a.y = b.y - a.h;
+    }
+    if ((a.x + a.w / 2 - 3) > b.x - a.w / 2 &&
+        (a.x) < (b.x + b.w - 3) &&
+        (a.y + a.h) > b.y &&
+        (a.y < b.y + b.h)) {
+        a.v.y = 0;
+        a.y = b.y + b.h;
+
+    }
+    if ((a.x) > b.x - a.w / 2 &&
+        (a.x) < (b.x + b.w) &&
+        (a.y + a.h - 3) > b.y &&
+        (a.y < b.y + b.h)) {
+        a.v.x = 0;
+        a.x = b.x + b.w;
+
+    }
+    if ((a.x + a.w / 2) > b.x - a.w / 2 &&
+        (a.x) < (b.x) &&
+        (a.y + a.h) > b.y &&
+        (a.y < b.y + b.h)) {
+        a.v.x = 0;
+        a.x = b.x - a.w;
+    }
+}
+function touching(a, b) {
+    return a.x + a.w > b.x && a.x < b.x + b.w && a.y + a.h > b.y && a.y < b.y + b.h;
+}
+
+//constrain
+function constrain(aNumber, aMin, aMax) {
+      return aNumber > aMax ? aMax : aNumber < aMin ? aMin : aNumber;
+}
+//lerp
+function lerp(value1, value2, amt) {
+    return ((value2 - value1) * amt) + value1;
+}
+
+//Add key events
+window.addEventListener('keydown', (e) => {
+    e.preventDefault();
+    keys[e.code] = true;
+});
+window.addEventListener('keyup', (e) => {
+    e.preventDefault();
+    keys[e.code] = false;
+});
+
+/** Player object (defines the player) */
+const player = {
+    //Starting x and y coords
+    x: 300,
+    y: 300,
+    //The width and height
+    w: blockSize - 5,
+    h: blockSize - 5,
+    //The velocity
+    v: {
+        x: 0,
+        y: 0,
+    },
+    //Can the player jump?
+    jump: false,
+    //Players health num
+    health: 10,
+    //Essentially the max Speed
+    maxVel: 2,
+    //Is the player on any of these blocks?
+    onTramp: false,
+    onIce: false,
+    onMud: false,
+    //draw and update
+    draw: function() {
+        ctx.fillStyle = "rgb(100, 255, 100)";
+        ctx.fillRect(this.x, this.y, this.w, this.h);
+    },
+    update: function() {
+        if (keys['ArrowLeft']) {
+            this.v.x -= 0.5;
+        }
+        else if (keys['ArrowRight']) {
+            this.v.x += 0.5;
+        }
+        else {
+            this.v.x /= this.onIce? 1.01 : 1.1;
+        }
+        if (keys['ArrowUp'] && this.jump) {
+            this.v.y = this.onTramp ? -3: -3;
+        }
+        if(this.onTramp){
+		  this.v.y -= 1;
+		}
+		if(this.onMud){
+		    this.maxVel = 0.5;
+		    this.jump = false;
+		}
+		else {
+		    this.maxVel = 2;
+		}
+		this.onIce = false;
+        this.onTramp = false;
+        this.onMud = false;
+        
+        this.v.y += 0.08;
+        this.x += this.v.x;
+        this.y += this.v.y;
+        this.jump = false;
+        this.v.x = constrain(this.v.x, -this.maxVel, this.maxVel);
+        
+    },
+    //Merge into one function
+    display: function() {
+        this.draw();
+        this.update();
+    }
+};
+//block constructor
+class Block {
+    constructor(x, y, w, h, type) {
+        this.x = x;
+        this.y = y;
+        this.w = w;
+        this.h = h;
+        this.type = type;
+    }
+    draw() {
+        switch(this.type){
+            case "block": {
+                
+                ctx.fillStyle = "rgb(255, 255, 255)";
+                
+                ctx.fillRect(this.x, this.y, this.w, this.h);
+                
+                Collide(player, this);
+                break;
+            }
+            case "portal": {
+                
+                ctx.fillStyle = "rgb(200, 100, 200)";
+                
+                ctx.fillRect(this.x, this.y, this.w, this.h);
+                if(touching(player, this)){
+                    nxt = true;
+                }
+                Collide(player, this);
+                break;
+            }
+            case "tramp": {
+                
+                ctx.fillStyle = "rgb(255, 255, 100)";
+                
+                ctx.fillRect(this.x, this.y, this.w, this.h);
+                if(touching(player, this)){
+                    player.onTramp = true;
+                }
+                Collide(player, this);
+                break;
+            }
+            case "ice": {
+                
+                ctx.fillStyle = "rgb(100, 100, 200)";
+                
+                ctx.fillRect(this.x, this.y, this.w, this.h);
+                if(touching(player, this)){
+                    player.onIce = true;
+                }
+                Collide(player, this);
+                break;
+            }
+            case "mud": {
+                
+                ctx.fillStyle = "rgb(100, 30, 0)";
+                
+                ctx.fillRect(this.x, this.y, this.w, this.h);
+                if(touching(player, this)){
+                    player.onMud = true;
+                }
+                Collide(player, this);
+                break;
+            }
+            case "hazard": {
+                
+                ctx.fillStyle = "rgb(255, 100, 100)";
+                
+                ctx.fillRect(this.x, this.y, this.w, this.h);
+                if(touching(player, this)){
+                    player.health -= 10;
+                }
+                Collide(player, this);
+                break;
+            }
+        }
+    }
+};
+
+//Set up the Map; 'i' and 'j' are 'x' and 'y'; respectively 
+function mapSetup(lvl) {
+    //Important! Allows for easy reseting of the canvas, without having to layer backgrounds. The blocks are stored in the array and called in a loop in the render function. 
+    //Because this variable is in the mapSetup function, everytime the function is called to reset blocks it will store a group of new blocks, accordingly
+    blocks = [];
+    //Loop through blocks in  the Map and create new blocks accordingly
+    for (let i = 0; i < MAP[lvl].length; i++) {
+        for (let j = 0; j < MAP[lvl][i].length; j++) {
+            switch (MAP[lvl][i][j]) {
+                //The blocks
+                case "#": {
+                    blocks.push(new Block(j * blockSize, i * blockSize, blockSize, blockSize, "block"));
+                    break;
+                }
+                case "!": {
+                    blocks.push(new Block(j * blockSize, i * blockSize, blockSize, blockSize, "hazard"));
+                    break;
+                }
+                case "%": {
+                    blocks.push(new Block(j * blockSize, i * blockSize, blockSize, blockSize, "portal"));
+                    break;
+                }
+                case "$": {
+                    blocks.push(new Block(j * blockSize, i * blockSize, blockSize, blockSize, "tramp"));
+                    break;
+                }
+                case "_": {
+                    blocks.push(new Block(j * blockSize, i * blockSize, blockSize, blockSize, "mud"));
+                    break;
+                }
+                case "&": {
+                    blocks.push(new Block(j * blockSize, i * blockSize, blockSize, blockSize, "ice"));
+                    break;
+                }
+                //Player start and reset position 
+                case "@": {
+                    player.x = j * blockSize;
+                    player.y = i * blockSize;
+                    break;
+                }
+            }
+            //Reset player if the health is 0 or below
+            if (player.health <= 0 && MAP[lvl][i][j] === "@"){
+                //Reset player position
+                player.x = j * blockSize;
+                player.y = i * blockSize;
+                //Reset player health
+                player.health = 10;
+            }
+        }
+    }
+}
+
+//Cam object
+const cam = {
+    x: player.x,
+    y: player.y,
+    z: 2,
+    update() {
+        this.x = lerp(this.x, player.x * this.z, 0.1);
+        this.y = lerp(this.y, player.y * this.z, 0.1);
+        ctx.translate(~~(-this.x + width / 2), ~~(-this.y + height / 2));
+        ctx.scale(this.z, this.z);
+    },
+};
+
+//Run key functions
+function app(){
+    if(player.y > 500){
+        player.health -= 10;
+    }
+    if (player.health <= 0) {
+        mapSetup(level - 1);
+    }
+    if (nxt) {
+        mapSetup(level);
+        level++;
+        player.health = 10;
+        nxt = false;
+    }
+}
+
+//render
+const render = () => {
+    //background
+    ctx.fillStyle = 'black';
+    ctx.fillRect(0, 0, width, height);
+    //Run platformer
+    app();
+    //Anything in here is affected by the cam
+    ctx.save();
+        //Update cam
+        cam.update();
+        //Draw all the blocks
+        for (var i = 0; i < blocks.length; i++) {
+            blocks[i].draw();
+        }
+        //Display and update player
+        player.display();
+    ctx.restore();
+};
+//Loops through the render function at 60 fps
+window.setInterval(render, 1000 / 60);
+
+//<script>
+        </script>
+        
+    </body>
+</html>
+
